@@ -94,7 +94,7 @@ def book_panditji(request):
         pooja_type = data.get('poojaType')
         poojan_samagri = data.get('poojanSamagri')
         id=data.get('panditji')
-        print(id)
+        
 
         # panditji = Panditji.objects.get(id=)
 
@@ -108,7 +108,7 @@ def book_panditji(request):
             time=time,
             pooja_type=pooja_type,
             poojan_samagri=poojan_samagri,
-            panditji=Panditji.objects.get(id=1)
+            panditji=Panditji.objects.get(id=id)
         )
         booking.save()
 

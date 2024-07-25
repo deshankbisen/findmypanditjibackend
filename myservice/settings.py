@@ -141,9 +141,11 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # or whatever your frontend URL is
+    "http://localhost:3000",
+    "https://findpanditji.netlify.app",# or whatever your frontend URL is
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",  # Add your React app URL here
+    "http://localhost:3000",
+    "https://findpanditji.netlify.app",# Add your React app URL here
 ]

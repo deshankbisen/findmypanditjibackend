@@ -27,7 +27,10 @@ SECRET_KEY = 'django-insecure-f2m01e(wqy#m$67f0=sjqfd8@y0z(60j@7fvwpfy8v*19qv=bg
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    " findmypanditjibackend-d94611cee10f.herokuapp.com",
+    "https://findpanditji.netlify.app",
+]
 
 
 # Application definition

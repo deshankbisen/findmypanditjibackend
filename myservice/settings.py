@@ -12,7 +12,9 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
-import dj_database_url
+import environ
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,10 +29,7 @@ SECRET_KEY = 'django-insecure-f2m01e(wqy#m$67f0=sjqfd8@y0z(60j@7fvwpfy8v*19qv=bg
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    "findmypanditjibackend-d94611cee10f.herokuapp.com",
-    "https://findpanditji.netlify.app",
-]
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -83,15 +82,18 @@ WSGI_APPLICATION = 'myservice.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
 DATABASES = {
-    'default': dj_database_url.config(default='postgres://u1300hf98eeg0e:p313df33705f9eba6dd76ba5d92cbd2bd925df877a16fdfa364232e7ad64fae68@c6sfjnr30ch74e.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/dfbopdcitlr15l')
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
+# import dj_database_url
+
+# DATABASES = {
+#     'default': dj_database_url.config(default='sqlite:///db.sqlite3')
+# }
 
 
 # Password validation
@@ -130,6 +132,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -144,11 +147,21 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://findpanditji.netlify.app",# or whatever your frontend URL is
+    "http://localhost:3000",  # or whatever your frontend URL is
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "https://findpanditji.netlify.app",# Add your React app URL here
+    "http://localhost:3000",  # Add your React app URL here
 ]
+
+env = environ.Env()
+# Reading .env file
+environ.Env.read_env()
+
+TWILIO_ACCOUNT_SID = env('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = env('TWILIO_AUTH_TOKEN')
+TWILIO_SERVICE_SID = env('TWILIO_SERVICE_SID')
+
+print(TWILIO_ACCOUNT_SID)
+print(TWILIO_AUTH_TOKEN)
+print(TWILIO_SERVICE_SID)

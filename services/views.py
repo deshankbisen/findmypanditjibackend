@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Panditji
 from .models import Booking
-import json
+import json,logging
 from django.utils.crypto import get_random_string
 from .models import User
 from django.core.mail import send_mail
@@ -13,6 +13,13 @@ from twilio.http.validation_client import ValidationClient
 from twilio.rest import Client
 import os
 from django.conf import settings
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+
+from django.contrib.auth import authenticate, login, get_user_model
+
+User = get_user_model()
 
 @csrf_exempt  # Only use this for testing purposes
 def register_panditji(request):
@@ -102,12 +109,6 @@ def book_panditji(request):
         poojan_samagri = data.get('poojanSamagri')
         id=data.get('panditji')
         print(id)
-
-        # panditji = Panditji.objects.get(id=)
-
-        # if Booking.objects.filter(panditji=panditji, date=date, time=time).exists():
-        #     return JsonResponse({'success': False, 'errors': 'Booking already exists for this Pandit Ji at the specified date and time.'})
-
         booking = Booking(
             user_name=user_name,
             address=address,
@@ -115,66 +116,11 @@ def book_panditji(request):
             time=time,
             pooja_type=pooja_type,
             poojan_samagri=poojan_samagri,
-            panditji=Panditji.objects.get(id=1)
+            panditji=Panditji.objects.get(id=id)
         )
         booking.save()
 
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'errors': 'Invalid request method'})
 
-@csrf_exempt
-def register_user(request):
-    account_sid = os.getenv('TWILIO_ACCOUNT_SID')
-    auth_token = os.getenv('TWILIO_AUTH_TOKEN')
-    service_sid = os.getenv('TWILIO_SERVICE_SID')
-    client = Client(account_sid, auth_token)
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        first_name = data.get('firstName')
-        last_name = data.get('lastName')
-        mobile_number = data.get('mobile')
-        
-        if User.objects.filter(mobile_number=mobile_number).exists():
-            return JsonResponse({'error': 'User with this mobile number already exists.'}, status=400)
-
-        otp = get_random_string(length=6, allowed_chars='1234567890')
-        user = User.objects.create_user(
-            first_name=first_name,
-            last_name=last_name,
-            mobile_number=mobile_number,
-            otp=otp
-        )
-
-        # Send OTP via SMS
-        try:
-            verification = client.verify \
-                .services(service_sid) \
-                .verifications \
-                .create(to=mobile_number, channel='sms')
-            if verification.status == "pending":
-                return JsonResponse({'success': 'User registered successfully. OTP sent.'}, status=200)
-            else:
-                user.delete()  # Rollback user creation if OTP sending fails
-                return JsonResponse({'error': 'Failed to send OTP.'}, status=500)
-        except Exception as e:
-            user.delete()  # Rollback user creation if there is an exception
-            return JsonResponse({'error': str(e)}, status=500)
-
-@csrf_exempt
-def verify_otp(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        mobile_number = data.get('mobileNumber')
-        otp = data.get('otp')
-
-        try:
-            user = User.objects.get(mobile_number=mobile_number)
-        except User.DoesNotExist:
-            return JsonResponse({'error': 'User does not exist.'}, status=404)
-
-        if user.otp == otp:
-            user.otp = None  # Clear OTP after verification
-            user.save()
-            return JsonResponse({'success': 'OTP verified successfully.'}, status=200)
-        else:
-            return JsonResponse({'error': 'Invalid OTP.'}, status=400)
+# 

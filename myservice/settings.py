@@ -14,7 +14,7 @@ from pathlib import Path
 import os
 import environ
 
-
+AUTH_USER_MODEL = 'services.User'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'services',
     'corsheaders',
+    
 ]
 
 MIDDLEWARE = [
@@ -56,6 +57,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.session.SessionMiddleware',
 ]
 
 ROOT_URLCONF = 'myservice.urls'
@@ -113,7 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
+AUTH_USER_MODEL = 'auth.User'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/

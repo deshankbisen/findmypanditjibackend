@@ -14,7 +14,7 @@ class Panditji(models.Model):
     area = models.CharField(max_length=100)
     mobile_number = models.CharField(max_length=15)
     document = models.FileField(upload_to='documents/', null=True, blank=True)
-
+    
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
@@ -26,10 +26,9 @@ class Booking(models.Model):
     pooja_type = models.CharField(max_length=100)
     poojan_samagri = models.BooleanField(default=False)
     panditji = models.ForeignKey('PanditJi', on_delete=models.CASCADE)
-
+    mobilenumber=models.CharField(max_length=13)
     class Meta:
         unique_together = ('panditji', 'date', 'time')
-
     def __str__(self):
         return f"Booking for {self.user_name} with {self.panditji} on {self.date} at {self.time}"
     

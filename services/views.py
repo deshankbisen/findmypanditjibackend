@@ -5,21 +5,15 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Panditji
 from .models import Booking
 import json,logging
-from django.utils.crypto import get_random_string
-from .models import User
-from django.core.mail import send_mail
-import random
-from twilio.http.validation_client import ValidationClient
+from twilio.rest import Client
 from twilio.rest import Client
 import os
 from django.conf import settings
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.models import User
-
-from django.contrib.auth import authenticate, login, get_user_model
-
-User = get_user_model()
+from django.db import IntegrityError
+from django.http import JsonResponse
+TWILIO_ACCOUNT_SID = settings.TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN = settings.TWILIO_AUTH_TOKEN
+TWILIO_SERVICE_SID = settings.TWILIO_SERVICE_SID
 
 @csrf_exempt  # Only use this for testing purposes
 def register_panditji(request):
@@ -36,10 +30,8 @@ def register_panditji(request):
         last_name_part = last_name[:2]    # First two characters of the last name
         mobile_number_part = mobile_number[:4]  # First four characters of the mobile number
         ids =mobile_number_part
-
         # File handling
         document = request.FILES.get('fileUpload')
-
         # Save the data to the database
         Panditji.objects.create(
             first_name=first_name,
@@ -51,12 +43,10 @@ def register_panditji(request):
             area=area,
             mobile_number=mobile_number,
             id=int(ids),
-            document=document  # Make sure your model has a field for this
-            
+            document=document  # Make sure your model has a field for this      
         )
 
         return JsonResponse({'success': True})
-
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
 def get_unique_cities(request):
@@ -71,7 +61,32 @@ def get_unique_areas(request):
         return JsonResponse(list(areas), safe=False)
     return JsonResponse([], safe=False)
 
-def find_panditji(request):
+def find_panditji_city(request):
+    city = request.GET.get('city', '')
+    # area = request.GET.get('area', '')
+
+    if not city :
+        return JsonResponse({'error': 'City is required'}, status=400)
+
+    # Query the database for Pandit Jis based on city and area
+    pandit_jis = Panditji.objects.filter(city__iexact=city)
+    
+    panditji_list = [
+        {
+            'first_name': panditji.first_name,
+            'last_name': panditji.last_name,
+            'experience': panditji.experience,
+            'qualification': panditji.qualification,
+            'speciality': panditji.speciality,
+            'city': panditji.city,
+            'id': panditji.id
+                }
+        for panditji in pandit_jis
+    ]
+        
+    return JsonResponse(panditji_list, safe=False)
+
+def find_panditji_area(request):
     city = request.GET.get('city', '')
     area = request.GET.get('area', '')
 
@@ -93,12 +108,13 @@ def find_panditji(request):
                 }
         for panditji in pandit_jis
     ]
-    print(panditji_list)
-    
+        
     return JsonResponse(panditji_list, safe=False)
 
 @csrf_exempt
 def book_panditji(request):
+    print (TWILIO_AUTH_TOKEN)
+    print (TWILIO_ACCOUNT_SID)
     if request.method == 'POST':
         data = json.loads(request.body)
         user_name = data.get('userName')
@@ -108,19 +124,43 @@ def book_panditji(request):
         pooja_type = data.get('poojaType')
         poojan_samagri = data.get('poojanSamagri')
         id=data.get('panditji')
-        print(id)
-        booking = Booking(
-            user_name=user_name,
-            address=address,
-            date=date,
-            time=time,
-            pooja_type=pooja_type,
-            poojan_samagri=poojan_samagri,
-            panditji=Panditji.objects.get(id=id)
-        )
-        booking.save()
+        mobilenumber=data.get('mobilenumber')
+        try:
+            booking = Booking(
+                user_name=user_name,
+                address=address,
+                date=date,
+                time=time,
+                pooja_type=pooja_type,
+                poojan_samagri=poojan_samagri,
+                panditji=Panditji.objects.get(id=id),
+                mobilenumber=mobilenumber
+            )
+            booking.save()            
+            account_sid = TWILIO_ACCOUNT_SID
+            auth_token = 'a154a0062419ef94527acf90070ffb41'
+            client = Client(account_sid, auth_token)
 
-        return JsonResponse({'success': True})
-    return JsonResponse({'success': False, 'errors': 'Invalid request method'})
+            message = client.messages.create(
+            from_='+12085635105',
+            body=f'Thanks for booking you Pooja with Panditji Shri {Panditji.objects.get(id=id)} schedulled on {date} we will reach out to you in a while over callf or confirmation.',
+            to=mobilenumber
+            )
+            account_sid = TWILIO_ACCOUNT_SID
+            auth_token = 'a154a0062419ef94527acf90070ffb41'
+            client = Client(account_sid, auth_token)
 
-# 
+            message = client.messages.create(
+            from_='whatsapp:+14155238886',
+            body=f'Thanks for booking you Pooja with Panditji Shri {Panditji.objects.get(id=id)} schedulled on {date} we will reach out to you in a while over callf or confirmation.',
+            to=f'whatsapp:{mobilenumber}'
+            )
+
+            print(message.sid)
+
+            return JsonResponse({'status': 'success', 'message': 'Booking successful'})
+        except IntegrityError:
+            return JsonResponse({'status': 'error', 'message': 'Booking already exists'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)
+
+

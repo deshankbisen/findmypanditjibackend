@@ -1,7 +1,7 @@
 # services/admin.py
 from django.contrib import admin
-from .models import Panditji,Booking,User
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from .models import Panditji,Booking
+
 
 @admin.register(Panditji)
 class PanditjiAdmin(admin.ModelAdmin):

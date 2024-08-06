@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'services',
     'corsheaders',
-    'core'
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     
 ]
 
@@ -165,6 +166,13 @@ TWILIO_ACCOUNT_SID = env('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = env('TWILIO_AUTH_TOKEN')
 TWILIO_SERVICE_SID = env('TWILIO_SERVICE_SID')
 
-print(TWILIO_ACCOUNT_SID)
-print(TWILIO_AUTH_TOKEN)
-print(TWILIO_SERVICE_SID)
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+SIMPLE_JWT = {
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}

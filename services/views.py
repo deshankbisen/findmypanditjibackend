@@ -202,7 +202,7 @@ def book_panditji(request):
 
             booking.save()
             account_sid = 'ACd474217efe2b2d5d95b95241b2368e83'
-            auth_token = '1d37ea52130be419b3f4ae2d2e5d9cea'
+            auth_token = 'e39eead11782386f70263cec0e6642f1'
             client = Client(account_sid, auth_token)
 
             message = client.messages.create(
@@ -210,15 +210,20 @@ def book_panditji(request):
             body=f'Thanks for booking you Pooja with Panditji Shri {Panditji.objects.get(username=username)} schedulled on {date} we will reach out to you in a while over callf or confirmation.',
             to=mobilenumber
             )
-            account_sid = TWILIO_ACCOUNT_SID
-            auth_token = '1d37ea52130be419b3f4ae2d2e5d9cea'
-            client = Client(account_sid, auth_token)
+            if poojan_samagri:
+                message = client.messages.create(
+                from_='+12085635105',
+                body=f'Mr. {booking.user_name} has booked the {booking.pooja_type} with you on {booking.date} at {booking.time} with poojan samagri',
+                to=panditji.mobile_number
+                )
+            else:
+                message = client.messages.create(
+                from_='+12085635105',
+                body=f'Mr. {booking.user_name} has booked the {booking.pooja_type} with you on {booking.date} at {booking.time} without poojan samagri',
+                to=panditji.mobile_number
+                )
+                
 
-            message = client.messages.create(
-            from_='whatsapp:+14155238886',
-            body=f'Thanks for booking you Pooja with Panditji Shri {Panditji.objects.get(username=username)} schedulled on {date} we will reach out to you in a while over callf or confirmation.',
-            to=f'whatsapp:{mobilenumber}'
-            )
 
             print(message.sid)
             response = {

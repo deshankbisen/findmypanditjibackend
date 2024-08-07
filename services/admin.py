@@ -5,7 +5,7 @@ from .models import Panditji,Booking
 
 @admin.register(Panditji)
 class PanditjiAdmin(admin.ModelAdmin):
-    list_display = ('first_name', 'last_name', 'qualification', 'speciality', 'experience', 'city', 'area', 'mobile_number')
+    list_display = ('username','first_name', 'last_name', 'qualification', 'speciality', 'experience', 'city', 'area', 'mobile_number')
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):

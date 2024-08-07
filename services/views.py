@@ -11,6 +11,8 @@ import os
 from django.conf import settings
 from django.db import IntegrityError
 from django.http import JsonResponse
+from datetime import datetime, timedelta
+logger = logging.getLogger(__name__)
 TWILIO_ACCOUNT_SID = settings.TWILIO_ACCOUNT_SID
 TWILIO_AUTH_TOKEN = settings.TWILIO_AUTH_TOKEN
 TWILIO_SERVICE_SID = settings.TWILIO_SERVICE_SID
@@ -28,8 +30,8 @@ def register_panditji(request):
         mobile_number = request.POST.get('mobileNumber')
         first_name_part = first_name[:2]  # First two characters of the first name
         last_name_part = last_name[:2]    # First two characters of the last name
-        mobile_number_part = mobile_number[:4]  # First four characters of the mobile number
-        ids =mobile_number_part
+        mobile_number_part = mobile_number[3:7]  # First four characters of the mobile number
+        username =first_name_part + mobile_number_part + last_name_part
         # File handling
         document = request.FILES.get('fileUpload')
         # Save the data to the database
@@ -42,7 +44,7 @@ def register_panditji(request):
             city=city,
             area=area,
             mobile_number=mobile_number,
-            id=int(ids),
+            username=username,
             document=document  # Make sure your model has a field for this      
         )
 
@@ -79,7 +81,7 @@ def find_panditji_city(request):
             'qualification': panditji.qualification,
             'speciality': panditji.speciality,
             'city': panditji.city,
-            'id': panditji.id
+            'username': panditji.username
                 }
         for panditji in pandit_jis
     ]
@@ -104,7 +106,7 @@ def find_panditji_area(request):
             'qualification': panditji.qualification,
             'speciality': panditji.speciality,
             'city': panditji.city,
-            'id': panditji.id
+            'username': panditji.username
                 }
         for panditji in pandit_jis
     ]
@@ -113,54 +115,120 @@ def find_panditji_area(request):
 
 @csrf_exempt
 def book_panditji(request):
-    print (TWILIO_AUTH_TOKEN)
-    print (TWILIO_ACCOUNT_SID)
     if request.method == 'POST':
-        data = json.loads(request.body)
-        user_name = data.get('userName')
-        address = data.get('address')
-        date = data.get('date')
-        time = data.get('time')
-        pooja_type = data.get('poojaType')
-        poojan_samagri = data.get('poojanSamagri')
-        id=data.get('panditji')
-        mobilenumber=data.get('mobilenumber')
         try:
+            # Print raw request data
+            print(f"Raw request data: {request.body}")
+
+            # Parse JSON request data
+            data = json.loads(request.body)
+
+            # Extract data from the request
+            data = json.loads(request.body)
+            user_name = data.get('userName')
+            address = data.get('address')
+            date = data.get('date')
+            time = data.get('time')
+            duration_hours = data.get('duration')
+            pooja_type = data.get('poojaType')
+            poojan_samagri = data.get('poojanSamagri')
+            username=data.get('panditji')
+            mobilenumber=data.get('mobilenumber')
+        # Print extracted data for debugging
+            print(f"Extracted data: user_name={user_name}, address={address}, date={date}, time={time}, duration_hours={duration_hours}, pooja_type={pooja_type}, poojan_samagri={poojan_samagri}, username={username}, mobilenumber={mobilenumber}")
+
+            # Validate required fields
+            if not all([user_name, address, date, time, duration_hours, pooja_type, username, mobilenumber]):
+                return JsonResponse({'status': 'error', 'message': 'Missing required fields.'}, status=400)
+
+            # Convert date and time to datetime objects
+            try:
+                date_obj = datetime.strptime(date, '%Y-%m-%d').date()
+                time_obj = datetime.strptime(time, '%H:%M').time()  # Parse AM/PM time
+                duration_hours = int(duration_hours) + 1# Convert duration_hours to integer
+            except ValueError as e:
+                logger.error(f"Date/Time conversion error: {e}")
+                return JsonResponse({'status': 'error', 'message': 'Invalid date or time format.'}, status=400)
+            # Calculate start and end datetime
+            start_datetime = datetime.combine(date_obj, time_obj)
+            end_datetime = start_datetime + timedelta(hours=duration_hours)
+            # Retrieve the PanditJi instance\
+            print(start_datetime,end_datetime)
+            try:
+                panditji = Panditji.objects.get(username=username)
+            except Panditji.MultipleObjectsReturned:
+                return JsonResponse({'status': 'error', 'message': 'Multiple PanditJi objects found. Please contact support.'}, status=500)
+            except Panditji.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'PanditJi not found. Please check the ID and try again.'}, status=404)
+
+            # Check for overlapping bookings
+            overlapping_bookings = Booking.objects.filter(
+                panditji=panditji,
+                date__lte=end_datetime.date(),
+                date__gte=start_datetime.date()
+            )
+            print(overlapping_bookings)
+
+            conflicts = []
+            for booking in overlapping_bookings:
+                existing_start_datetime = datetime.combine(booking.date, booking.time)
+                existing_end_datetime = existing_start_datetime + timedelta(hours=booking.duration_hours)
+                print(start_datetime,end_datetime,existing_start_datetime,existing_end_datetime)
+                # Check for overlap
+                if (start_datetime < existing_end_datetime and end_datetime > existing_start_datetime):
+                    conflicts.append({
+                        'start': existing_start_datetime.strftime('%Y-%m-%d %H:%M'),
+                        'end': existing_end_datetime.strftime('%Y-%m-%d %H:%M')
+                    })
+
+            if conflicts:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'PanditJi is already booked for the selected time slot.{conflicts}',
+                    'conflicting_slots': conflicts
+                }, status=400)
+            # Create a new booking
             booking = Booking(
                 user_name=user_name,
                 address=address,
-                date=date,
-                time=time,
+                date=date_obj,
+                time=time_obj,
+                duration_hours=duration_hours,
                 pooja_type=pooja_type,
                 poojan_samagri=poojan_samagri,
-                panditji=Panditji.objects.get(id=id),
+                panditji=panditji,
                 mobilenumber=mobilenumber
             )
-            booking.save()            
-            account_sid = TWILIO_ACCOUNT_SID
-            auth_token = 'a154a0062419ef94527acf90070ffb41'
+
+            booking.save()
+            account_sid = 'ACd474217efe2b2d5d95b95241b2368e83'
+            auth_token = '1d37ea52130be419b3f4ae2d2e5d9cea'
             client = Client(account_sid, auth_token)
 
             message = client.messages.create(
             from_='+12085635105',
-            body=f'Thanks for booking you Pooja with Panditji Shri {Panditji.objects.get(id=id)} schedulled on {date} we will reach out to you in a while over callf or confirmation.',
+            body=f'Thanks for booking you Pooja with Panditji Shri {Panditji.objects.get(username=username)} schedulled on {date} we will reach out to you in a while over callf or confirmation.',
             to=mobilenumber
             )
             account_sid = TWILIO_ACCOUNT_SID
-            auth_token = 'a154a0062419ef94527acf90070ffb41'
+            auth_token = '1d37ea52130be419b3f4ae2d2e5d9cea'
             client = Client(account_sid, auth_token)
 
             message = client.messages.create(
             from_='whatsapp:+14155238886',
-            body=f'Thanks for booking you Pooja with Panditji Shri {Panditji.objects.get(id=id)} schedulled on {date} we will reach out to you in a while over callf or confirmation.',
+            body=f'Thanks for booking you Pooja with Panditji Shri {Panditji.objects.get(username=username)} schedulled on {date} we will reach out to you in a while over callf or confirmation.',
             to=f'whatsapp:{mobilenumber}'
             )
 
             print(message.sid)
-
-            return JsonResponse({'status': 'success', 'message': 'Booking successful'})
-        except IntegrityError:
-            return JsonResponse({'status': 'error', 'message': 'Booking already exists'})
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)
-
+            response = {
+                'status': 'success',
+                'message': f"Booking for {booking.user_name} with {booking.panditji} on {booking.date} at {booking.time} was successful."
+            }
+            return JsonResponse(response)
+        
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 

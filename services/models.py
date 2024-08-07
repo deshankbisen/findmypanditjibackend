@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from datetime import timedelta,datetime
 
 class Panditji(models.Model):
     
@@ -14,6 +15,7 @@ class Panditji(models.Model):
     area = models.CharField(max_length=100)
     mobile_number = models.CharField(max_length=15)
     document = models.FileField(upload_to='documents/', null=True, blank=True)
+    username = models.CharField(max_length=8)
     
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -23,6 +25,7 @@ class Booking(models.Model):
     address = models.CharField(max_length=200)
     date = models.DateField()
     time = models.TimeField()
+    duration_hours = models.PositiveIntegerField()
     pooja_type = models.CharField(max_length=100)
     poojan_samagri = models.BooleanField(default=False)
     panditji = models.ForeignKey('PanditJi', on_delete=models.CASCADE)
@@ -31,4 +34,9 @@ class Booking(models.Model):
         unique_together = ('panditji', 'date', 'time')
     def __str__(self):
         return f"Booking for {self.user_name} with {self.panditji} on {self.date} at {self.time}"
+    
+    def get_end_time(self):
+        start_datetime = datetime.combine(self.date, self.time)
+        end_datetime = start_datetime + timedelta(hours=self.duration_hours)
+        return end_datetime.time()
     
